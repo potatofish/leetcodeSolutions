@@ -1,4 +1,7 @@
 const isDebug = false;
+const isVerbose = true;
+const CHAR_INDENT = "\t";
+var logIndent = 0;
 
 var writeToConsoleLog = (line,arg) => {
     if(true) {
@@ -9,53 +12,123 @@ var writeToConsoleLog = (line,arg) => {
     }
 };
 
+var writeToVerboseLog = (line,arg) => {
+    if(isVerbose) {
+        writeToConsoleLog(CHAR_INDENT.repeat(logIndent)+line,arg);
+    }
+}
+
+var writeHeaderLog = (line,arg) => {
+    if(isVerbose) {
+        writeToConsoleLog(CHAR_INDENT.repeat(logIndent)+line,arg);
+        logIndent++;
+    }
+}
+
+var writeFooterLog = (line,arg) => {
+    if(isVerbose) {
+        logIndent--;
+        writeToConsoleLog(CHAR_INDENT.repeat(logIndent)+line,arg);
+    }
+}
+
 var writeToDebugLog = (line,arg) => {
     if(isDebug) {
         writeToConsoleLog(line,arg);
     }
 };
 
+var debugTimeStamps = {}
+
 /**
+ * Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]] 
+ * such that i != j, i != k, and j != k, and nums[i] + nums[j] + nums[k] == 0.
+ * Notice that the solution set must not contain duplicate triplets.
  * @param {number[]} nums
  * @return {number[][]}
  */
+const SET_TARGET = 0;
+const SET_SIZE = 3;
 var threeSum = function(aNumsArray) {
-    var nums = [...aNumsArray];
-    const startThreeSumTS = Date.now(); 
-    const SET_TARGET = 0;
-    writeToDebugLog(`***trios search [target=${SET_TARGET}] start for ${nums.length} nums:`)
-    //sort the array
-    nums.sort((a,b)=>{
-        return Math.sign(a - b)
-    }); 
-    
-    const startFilterTS = Date.now();
-    var filterCounts = {};
-    // const smallestSum = nums[0] + nums[1];
-    // writeToConsoleLog(`\t smallestSum in trio array is ${smallestSum}`)
-    var filteredNums = nums.filter((val,idx)=>{
-        // if(val <= smallestSum*-1) {
-            if(typeof filterCounts[val] === "undefined") {
-                filterCounts[val] = 0;
-            }
-            if(filterCounts[val] < 3) {
-                filterCounts[val]++;
-                return true;
-            }
-        // }
-    });
-    const endFilterTS = Date.now();
-    const delayMS = endFilterTS - startFilterTS;
-    // writeToDebugLog(filteredNums)
-    // nums=filteredNums;
+    return threeSumTarget(aNumsArray,SET_TARGET);
+}
 
-    writeToConsoleLog(`\tfiltering delay:${delayMS}ms`)
-    // if(nums.length !== filteredNums.length && delayMS > 1)
-    //     throw `delay ${delayMS}ms\n\t[${nums}]\n\t[${filteredNums}]`
+var threeSumTarget = function(aNumsArray,target) {
+    const emptyResult = [];
+
+    // EARLY EXIT: return if array isn't big enough to form a triplet
+    if(aNumsArray.length < SET_SIZE) 
+        return emptyResult;
+
+
+    // copy the array so we don't damage the original
+    let nums = [...aNumsArray];
+    
+    //sort the array
+    debugTimeStamps.sort = Date.now();
+    nums.sort((a,b)=>{ return Math.sign(a - b) }); 
+    const sortRuntime = Date.now() - debugTimeStamps.sort;
+    writeToVerboseLog(`Sorted nums Array of size ${nums.length} in ${sortRuntime}ms`);
+
+    // EARLY EXIT: return if target is lower than all remaining numbers)
+    if (target < nums[0])
+        return emptyResult;
+    
+    // filter array removing numbers from nums for volumes of any individual
+    // number greater than the size of the unique set we're trying to produce
+    // e.g. in "threeSum([i,j,k,l])" where i=j=k=l
+    //      as i,j,k = 1,2,3 results in a set of [3,3,3] 
+    debugTimeStamps.filter = Date.now();
+    let numCounts = {};
+    let filteredNums = nums.filter((val,idx)=>{
+        if(typeof numCounts[val] === "undefined") {
+            numCounts[val] = 0;
+        }
+        if(numCounts[val] < SET_SIZE) {
+            numCounts[val]++;
+            return true;
+        }
+    });
+    const filterRuntime = Date.now() - debugTimeStamps.filter;
+    writeToVerboseLog(`Filtered nums Array of size ${nums.length} down to ${filteredNums.length} in ${filterRuntime}ms by removing excess duplicates`);
+    nums=filteredNums;
+    
+    let idxI = 0;
+    let idxOflastPossibleK = nums.length - 1;
+    let tripletArray = [];
+    while (idxI < nums.length) {
+        const valI = nums[idxI];
+        const targetSumJK = target - valI;
+        const valOfFirstPossibleJ = nums[idxI+1];
+        const valOfLastPossibleK = nums[idxOflastPossibleK];
+        // EARLY EXIT: return if target is lower than all remaining numbers)
+        if (targetSumJK < valOfFirstPossibleJ)
+            break;
+        
+        const numsSliced = nums.slice(idxI+1,idxOflastPossibleK+1)
+        // EARLY EXIT: return if array isn't big enough to form a triplet
+        if(numsSliced.length < SET_SIZE) 
+            break;
+
+        let matchingDuos = twoSumAll(numsSliced, targetSumJK)
+
+        writeToVerboseLog(`New target=${targetSumJK} for sum(nums[j,k]) /w i=${idxI}.`);
+        writeToVerboseLog(`Current val=${valI} exists for ${numCounts[valI]} values of i`);
+        writeToVerboseLog(`Value @ first possible j=${valOfFirstPossibleJ} & @ last possible k=${valOfLastPossibleK}`)
+        writeToVerboseLog(`Sliced ${nums.length} nums down to ${numsSliced} for & found [${matchingDuos.length}] duos`);
+        matchingDuos.forEach(idxMatch => {
+            const idxJ = idxMatch[0] + idxI + 1;
+            const idxK = idxMatch[1] + idxI + 1;
+            writeToVerboseLog(`Valid Triplet [${nums[idxI]},${nums[idxJ]},${nums[idxK]}] in [${nums}] for [i,j,k]=[${idxI},${idxJ},${idxK}]`)
+        });
+
+        //TODO FAST-FORWARD idxI past any duplicate nums[idxI] values;
+        idxI += numCounts[valI];
+    }
 
     var triosSet = new Set();
     var checkedVals = new Set();
-    var filterCounts = {};    
+    // var numCounts = {};    
     nums.some((val,idxI) => {
         // var restOfNums = nums.slice(idxI+1);
         const smallestRemSum = (nums[idxI]+nums[idxI+1]);
@@ -98,6 +171,9 @@ var threeSum = function(aNumsArray) {
 
         var matchingDuos = twoSumAll(restOfNums,SET_TARGET-val,nums);
         const twoSumAllRunTime = Date.now()-starttwoSumAllTS;
+        if(twoSumAllRunTime >= 5) {
+            console.log(`Lookup length ${twoSumAllRunTime}ms exceeds expectation`);
+        }
         if(twoSumAllRunTime >= 0 && matchingDuos.length === 0) {
             const smallestRemSum = nums[idxI] + nums[idxI+1];
             writeToDebugLog(
@@ -133,9 +209,9 @@ var threeSum = function(aNumsArray) {
     });
     writeToDebugLog(`\tThere are ${results.length} resulting trios. They are `);
     writeToDebugLog("\t\t",results)
-    writeToDebugLog(`***trios search [target=${SET_TARGET} in nums=[${nums}]] complete`)
-    const threeSumRunTime = Date.now()-startThreeSumTS;
-    writeToConsoleLog(`threeSum runtime: ${threeSumRunTime} ms`)
+    // const  debugTimeStamps.f = Date.now()-startThreeSumTS;
+    // writeFooterLog(`***threeSum search [target=${SET_TARGET}] for an array nums of size ${aNumsArray.length} [COMPLETE in ${threeSumRunTime}ms]`)
+    // writeToConsoleLog(`threeSum runtime: ${threeSumRunTime} ms`)
     return results;
 };
 
@@ -224,3 +300,32 @@ var twoSumAllNew = (numsJ,duoTarget) => {
         findInSortedArray(numsJ.slice(idxJ),duoTarget-val);
     })
 }
+
+var testCases = [
+    { input: [-1,0,1,2,-1,-4], expected:[[-1,-1,2],[-1,0,1]] },
+    { input: [], expected:[] },
+    { input: [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1], 
+        expected:[[-1,0,1],[0,0,0]] },
+    { input: [0], expected:[] }
+];
+
+testCases.some((valTC)=>{
+    writeHeaderLog(`***threeSum search [target=${SET_TARGET}] for an array nums of size ${valTC.input.length} [START]`);
+    debugTimeStamps.threeSum = Date.now(); 
+    var results = threeSum(valTC.input);
+    const threeSumRuntime = Date.now() - debugTimeStamps.threeSum;
+    writeFooterLog(`***threeSum search [target=${SET_TARGET}] for an array nums of size ${valTC.input.length} [COMPLETE in ${threeSumRuntime}ms]`)
+    
+    if (valTC.expected.length !== results.length) {
+        console.log(`Error ${valTC.expected} !== ${results}`);
+    }
+    else {
+        results.some((trio,resultIdx)=>{
+            trio.some((val,trioIdx)=> {
+                if(valTC.expected[resultIdx][trioIdx] !== val) {
+                    console.log(`${valTC.expected[resultIdx][trioIdx]} !== ${val}`);
+                }
+            })
+        })
+    }
+})
