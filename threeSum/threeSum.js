@@ -1,11 +1,56 @@
-const isDebug = false;
-const isVerbose = (process.execPath.split("/home/fishy/").length > 1) && true;
-const headAndFootOnly = true;
+// const MODE_STATE
+const PATH_DEV_ENV_HOME_DIR = "/home/fishy/";
 const CHAR_INDENT = "\t";
-var logIndent = 0;
-var log = getLogFns();
 
-var debugTimeStamps = {};
+
+const IS = {
+    "VERBOSE": true,
+    "DEBUG": false,
+    "HEADER_FOOTER": false,
+    "OUTPUT_CATCH": false
+}
+const MAX_PRINTABLE_NUMS_LEN = 10;
+
+const isDevelopment = process.execPath.split(PATH_DEV_ENV_HOME_DIR).length > 1;
+const verbosePrintingOn = isDevelopment && IS.VERBOSE;
+
+let logIndent = 0;
+const log = getLogFns();
+
+
+let verboseTimeStamps = {};
+let timeStampWrap = ((label,message,evalFn, logFnBefore, logFnAfter) => {
+    if(!verbosePrintingOn) {
+        return evalFn();
+    }
+    
+    logFnBefore = typeof logFnBefore === "undefined" ? log.vBullet : logFnBefore;
+    verboseTimeStamps[label]= []; 
+    verboseTimeStamps[label].start = Date.now();
+    if(typeof logFnAfter !== "undefined") {
+        let wrapZone = "TS-START";
+        logFnBefore(`${eval(message)}`);
+    }
+
+    let tsResult = evalFn();
+
+    let wrapZone = "TS-FINAL";
+    let afterArg = message;
+    verboseTimeStamps[label].end = Date.now()
+    verboseTimeStamps[label].runtime = ()=>{return verboseTimeStamps[label].end - verboseTimeStamps[label].start;}
+    if(typeof logFnAfter === "undefined") {
+        logFnAfter = logFnBefore;
+        afterArg += `+ \`in ${verboseTimeStamps[label].runtime()}ms\``;
+    }
+    else {
+        wrapZone += ` in ${verboseTimeStamps[label].runtime()}ms`;
+    }
+
+    logFnAfter(`${eval(afterArg)}`);
+
+    return tsResult;
+});
+
 // TODO make a different version that finds all twosomes and then pairs them with a third
 /**
  * Given an integer array nums, return all the triplets [nums[i], nums[j], nums[k]]
@@ -17,111 +62,148 @@ var debugTimeStamps = {};
 var threeSum = function (aNumsArray) {
     const SET_TARGET = 0;
     log.vHeader(`*** [START] threeSums search [target=${SET_TARGET}] for an array nums of size ${aNumsArray.length}`);
-    debugTimeStamps.threeSum = Date.now();
+
+    verboseTimeStamps.threeSum = Date.now();
     var matchingThreeSums = threeSums(aNumsArray, SET_TARGET);
-    log.vBullet((()=>{
-        let outputString = "";
-        matchingThreeSums.forEach((val)=>{outputString += `[${val}],`;});
-        return outputString;
-    })())
-    const threeSumRuntime = Date.now() - debugTimeStamps.threeSum;
+    if(IS.OUTPUT_CATCH) {
+        log.vBullet((()=>{
+            let outputString = "";
+            matchingThreeSums.forEach((val)=>{outputString += `[${val}],`;});
+            return outputString;
+        })())
+    }
+    const threeSumRuntime = Date.now() - verboseTimeStamps.threeSum;
     log.vFooter(`*** [COMPLETE in ${threeSumRuntime}ms] threeSums search [target=${SET_TARGET}] for an array nums of size ${aNumsArray.length}`);
     return matchingThreeSums;
 };
+
 var threeSums = function (aNumsArray, target) {
-    const emptyResult = [];
-    const SET_SIZE = 3;
+    const EMPTY_RESULT = [];
+    const LEN_TRIPLET = 3;
     // EARLY EXIT: return if array isn't big enough to form a triplet
-    if (aNumsArray.length < SET_SIZE) {
+    if (aNumsArray.length < LEN_TRIPLET) {
         log.vBullet(`EARLY EMPTY EXIT: a nums of size ${aNumsArray.length} is not enough to form a triplet`);
-        return emptyResult;
+        return EMPTY_RESULT;
     }
 
     // copy the array so we don't damage the original
     let nums = [...aNumsArray];
 
     //sort the array
-    debugTimeStamps.sort = Date.now();
-    nums.sort((a, b) => { return Math.sign(a - b); });
-    const sortRuntime = Date.now() - debugTimeStamps.sort;
-    log.vBullet(`Sorted nums Array of size ${nums.length} in ${sortRuntime}ms`);
+    const sort = () => {
+        return nums.sort((a, b) => { return Math.sign(a - b); });
+    };
+    const sortedNums = timeStampWrap("sort", "`"+ `Sorted nums Array of size ${nums.length}` + "`", sort);
 
     // EARLY EXIT: return if target is lower than all remaining numbers)
     if (target < nums[0]) {
         log.vBullet(`EARLY EMPTY EXIT: Target (${target}) is lower than the smallest value in nums - ${nums[0]}`);
-        return emptyResult;
+        return EMPTY_RESULT;
     }
 
     // filter array removing numbers from nums for volumes of any individual
     // number greater than the size of the unique set we're trying to produce
     // e.g. in "threeSum([i,j,k,l])" where i=j=k=l
     //      as i,j,k = 1,2,3 results in a set of [3,3,3] 
-    debugTimeStamps.filter = Date.now();
     let numCounts = {};
-    let filteredNums = nums.filter((val, idx) => {
-        if (typeof numCounts[val] === "undefined") {
-            numCounts[val] = 0;
-        }
-        if (numCounts[val] < SET_SIZE) {
-            numCounts[val]++;
-            return true;
-        }
-    });
-    const filterRuntime = Date.now() - debugTimeStamps.filter;
-    log.vBullet(`Filtered nums Array of size ${nums.length} down to ${filteredNums.length} in ${filterRuntime}ms by removing excess duplicates`);
+    const filterExcessDuplicates = () => {
+        return nums.filter((val) => {
+            if (typeof numCounts[val] === "undefined") {
+                numCounts[val] = 0;
+            }
+            if (numCounts[val] < LEN_TRIPLET) {
+                numCounts[val]++;
+                return true;
+            }
+        });
+    };
+    const filteredNums = timeStampWrap("filter", "`"+ `Filtered nums Array of size ${nums.length}` + " down to ${tsResult.length}`", filterExcessDuplicates);
     nums = filteredNums;
 
     let idxI = 0;
     let idxOflastPossibleK = nums.length - 1;
-    let uniqueTrioIdxs = [];
-    let uniqueTrioVals = [];
+    const uniqueTrioData = {
+        "keysArray": [],
+        "valuesArray": [],
+        add: (keys) => {
+            const [idxI, idxJ,idxK] = keys;
+            const [valI, valJ, valK] = [nums[idxI], nums[idxJ], nums[idxK]];
+            uniqueTrioData.keysArray.push([idxI, idxJ, idxK]);
+            uniqueTrioData.valuesArray.push([valI, valJ, valK]);
+            return [valI, valJ, valK];
+        }
+    };
     while (idxI < nums.length) {
         const valI = nums[idxI];
-        const targetOfSumJK = target - valI;
-        const valOfFirstPossibleJ = nums[idxI + 1];
-        const valOfLastPossibleK = nums[idxOflastPossibleK];
-        // EARLY EXIT: return if target is lower than all remaining numbers)
-        if (targetOfSumJK < valOfFirstPossibleJ)
-            break;
+        const targetSumOfJK = target - valI;
+        const nextLowestValue = nums[idxI + 1];
+        const highestPossibleValue = nums[idxOflastPossibleK];
 
-        const numsSliced = nums.slice(idxI + 1, idxOflastPossibleK + 1);
-        // EARLY EXIT: return if array isn't big enough to form a triplet
-        if (numsSliced.length < SET_SIZE - 1) {
-            log.vBullet(`WHILE BREAK: a numsSliced of size ${numsSliced.length} is not enough to form a duo`);
+        // EARLY EXIT: return if target is lower than all remaining numbers)
+        if (targetSumOfJK < nextLowestValue) {
+            log.vBullet(
+                `WHILE BREAK:\n` + 
+                CHAR_INDENT.repeat(log.indent()+1) + `Current idxI has no matching duos in the remaining numbers (idxI:${idxI}, valI:${valI})\n` +
+                CHAR_INDENT.repeat(log.indent()+1) + `Next smallest valJ is above new target of Sum(valJ,valK) (valJ:${nextLowestValue} > target:${targetSumOfJK}),`
+            );
             break;
         }
 
-        log.verbose(`New target=${targetOfSumJK} for sum(nums[j,k]) /w i=${idxI}.`);
-        log.vHeader(`+++ [START] twoSums search target=${targetOfSumJK} /w idxI=${idxI} in for ${numsSliced.length} nums`);
-        debugTimeStamps.twoSums = Date.now();
-        let matchingDuos = twoSums(numsSliced, targetOfSumJK);
-        const twoSumsRuntime = Date.now() - debugTimeStamps.twoSums;
-        log.vFooter(`+++ [COMPLETE in ${twoSumsRuntime}ms] twoSums search target=${targetOfSumJK} results in ${matchingDuos.length} duos`);
+        const numsSliced = nums.slice(idxI + 1, idxOflastPossibleK + 1);
+        // EARLY EXIT: return if array isn't big enough to form a triplet
+        if (numsSliced.length < (LEN_TRIPLET - 1)) {
+            log.vBullet(
+                `WHILE BREAK:\n` + 
+                CHAR_INDENT.repeat(log.indent()+1) + `a numsSliced of size ${numsSliced.length} is not enough to form a duo`
+            );
+            break;
+        }
 
-        log.vBullet(`Value @ first possible j=${valOfFirstPossibleJ} & @ last possible k=${valOfLastPossibleK}`);
-        log.vBullet(`Sliced ${nums.length} nums down to ${numsSliced} for & found [${matchingDuos.length}] duos`);
+        if (highestPossibleValue*LEN_TRIPLET < target) {
+            log.vBullet(`${highestPossibleValue*LEN_TRIPLET} vs ${targetSumOfJK}`);
+        }
+
+        log.verbose(`New target=${targetSumOfJK} for sum(nums[j,k]) /w i=${idxI}.`);
+        const twoSumsRuntimeMsg = "`+++ [${wrapZone}] " + `twoSums search target=${targetSumOfJK} /w idxI=${idxI} in for ${numsSliced.length} nums` + "`";
+        const twoSumsWrapperFn = () => { return twoSums(numsSliced, targetSumOfJK); };
+        const matchingDuos = timeStampWrap("twoSums", twoSumsRuntimeMsg, twoSumsWrapperFn, log.vHeader, log.vFooter);
+
+        log.vBullet(`Value @ first possible j=${nextLowestValue} & @ last possible k=${highestPossibleValue}`);
+        log.vBullet(
+            `Sliced ${nums.length} nums down to ` +
+            `${numsSliced.length < MAX_PRINTABLE_NUMS_LEN ? "["+numsSliced+"]" : numsSliced.length + " integers"} ` +
+            `for & found [${matchingDuos.length}] duos`
+        );
 
         matchingDuos.forEach(idxMatch => {
-            const idxJ = idxMatch[0] + idxI + 1;
-            const idxK = idxMatch[1] + idxI + 1;
-            const [valI, valJ, valK] = [nums[idxI], nums[idxJ], nums[idxK]];
-            uniqueTrioIdxs.push([idxI, idxJ, idxK]);
-            uniqueTrioVals.push([valI, valJ, valK]);
+            function offsetDuoIdx(n) {
+                return idxMatch[n] + idxI + 1;
+            }
+            const [idxJ,idxK] = [offsetDuoIdx(0), offsetDuoIdx(1)];
+            const [valI, valJ, valK] = uniqueTrioData.add([idxI, idxJ, idxK]);
 
-            log.vBullet(`Validated Triplet [${valI},${valJ},${valK}] in [${nums}] for [i,j,k]=[${idxI},${idxJ},${idxK}]`);
+            log.vBullet(
+                `Validated Triplet [${valI},${valJ},${valK}] ` + 
+                `${nums.length < MAX_PRINTABLE_NUMS_LEN ? "in ["+nums+"]" : "within " + nums.length + " integers"}` + 
+                ` for [i<j<k]=[${idxI}<${idxJ}<${idxK}]`
+            );
+
         });
 
         //FAST-FORWARD idxI past any duplicate nums[idxI] values;
         log.vBullet(`Current val=${valI} exists for ${numCounts[valI]} values of i`);
         idxI += numCounts[valI];
     }
-    return uniqueTrioVals;
+    return uniqueTrioData.valuesArray;
+
+
 };
+
 var twoSums = (aNumsArray, target) => {
     const emptyResult = [];
-    const SET_SIZE = 2;
+    const LEN_DUO = 2;
     // EARLY EXIT: return if array isn't big enough to form a duo
-    if (aNumsArray.length < SET_SIZE)
+    if (aNumsArray.length < LEN_DUO)
         return emptyResult;
 
     let nums = [...aNumsArray];
@@ -155,6 +237,18 @@ var twoSums = (aNumsArray, target) => {
         }
         else {
             targetsMissed++;
+
+            const maxPossibleSum = valK * LEN_DUO;
+            // EARLY EXIT Maximum possible sum is less than the target, making the sum impossible
+            if (maxPossibleSum < target) {
+                log.vBullet(
+                    `!!!WHILE BREAK:\n` + 
+                    CHAR_INDENT.repeat(log.indent()+1) + `Highest valK, makes for a maximum possible twoSum of ${maxPossibleSum} (valK:${valK})\n` + 
+                    CHAR_INDENT.repeat(log.indent()+1) + `And that is more than the targetSum for duos (maxSum:${maxPossibleSum} < target:${target})`
+                );
+                break;
+            }
+    
             // log.verbose(`  valJ=${valJ} missed target by ${valJOffByTarget}. valK=${valK} missed target by ${valKOffByTarget}.`);
             if (sumJK < target) { idxJ++; } // if the sum is too small try the next biggest number
             else if (sumJK > target) {
@@ -195,50 +289,49 @@ var twoSums = (aNumsArray, target) => {
         const [valJ, valK] = JSON.parse(entry[0]);
         const [idxJ, idxK] = JSON.parse(entry[1]);
         // const [valJ,valK] = [nums[idxJ], nums[idxK]];
-        log.vBullet(`Validated Duo [${valJ},${valK}] in [${nums.length < 10 ? nums : "nums"}] for [j,k]=[${idxJ},${idxK}]`);
+        log.vBullet(`Validated Duo [${valJ},${valK}] in [${nums.length < MAX_PRINTABLE_NUMS_LEN ? "["+nums+"]" : nums.length + " integers"}] for [j,k]=[${idxJ},${idxK}]`);
         uniqueDuoIdxs.push([idxJ, idxK]);
     }
     return uniqueDuoIdxs;
 };
 
-module.exports = { threeSum };
-
 function getLogFns() {
+    let theLogIndent = 0;
     var writeToConsoleLog = (line, arg) => {
-        if (true) {
-            if (arg)
-                console.log(line, arg);
-
-
-            else
-                console.log(line);
-        }
+            let logArgs = [line].concat(arg);
+            console.log(...logArgs);
+            // if (arg)
+            //     console.log(line, arg);
+            // else
+            //     console.log(line);
     };
     var writeToVerboseLog = (line, arg) => {
-        if (isVerbose && !headAndFootOnly) {
-            writeToConsoleLog(CHAR_INDENT.repeat(logIndent) + line, arg);
+        if (verbosePrintingOn && !IS.HEADER_FOOTER) {
+            writeToConsoleLog(CHAR_INDENT.repeat(theLogIndent) + line, arg);
         }
     };
     var writeToVerboseBullet = (line, arg) => {
-        if (isVerbose && !headAndFootOnly) {
+        if (verbosePrintingOn && !IS.HEADER_FOOTER) {
             const STRING_BULLET_PREFIX = `- `;
             writeToVerboseLog(STRING_BULLET_PREFIX + line, arg);
         }
     };
     var writeHeaderLog = (line, arg) => {
-        if (isVerbose) {
-            writeToConsoleLog(CHAR_INDENT.repeat(logIndent) + line, arg);
-            logIndent++;
+        if (verbosePrintingOn) {
+            // console.log({H_indent: theLogIndent});
+            writeToConsoleLog(CHAR_INDENT.repeat(theLogIndent) + line, arg);
+            theLogIndent++;
         }
     };
     var writeFooterLog = (line, arg) => {
-        if (isVerbose) {
-            logIndent--;
-            writeToConsoleLog(CHAR_INDENT.repeat(logIndent) + line, arg);
+        if (verbosePrintingOn) {
+            theLogIndent--;
+            // console.log({F_indent:theLogIndent});
+            writeToConsoleLog(CHAR_INDENT.repeat(theLogIndent) + line, arg);
         }
     };
     var writeToDebugLog = (line, arg) => {
-        if (isDebug) {
+        if (IS.DEBUG) {
             writeToConsoleLog(line, arg);
         }
     };
@@ -247,7 +340,10 @@ function getLogFns() {
         vBullet: writeToVerboseBullet, 
         vFooter: writeFooterLog, 
         verbose: writeToVerboseLog,
-        console: writeToConsoleLog,
-        debug: writeToDebugLog
+        // console: writeToConsoleLog,
+        debug: writeToDebugLog,
+        indent: ()=>{return theLogIndent;}
     };
-}
+};
+
+module.exports = { threeSum };
