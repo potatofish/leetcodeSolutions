@@ -2,10 +2,10 @@ let threeSumJS = require('./threeSum.js');
 let fs = require("fs");
 let util = require("util");
 let testCases = [];
-// testCases = testCases.concat(JSON.parse(fs.readFileSync("./testcases/testcases.json","utf-8")));
-testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-01.json","utf-8")));
-// testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-02.json","utf-8")));
-// testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-03.json","utf-8")));
+testCases = testCases.concat(JSON.parse(fs.readFileSync("./testcases/testcases.json","utf-8"))); // simple cases
+testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-01.json","utf-8")));  // massive case with no reduction
+// testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-02.json","utf-8")));  
+// testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-03.json","utf-8")));  // massive case with many duplicates
 // console.log(util.inspect(testCases, showHidden = false, depth = null, colorize = true));
 // var testCases = [
     //     { input: [-1,0,1,2,-1,-4], expected:[[-1,-1,2],[-1,0,1]] },

@@ -101,19 +101,6 @@ var threeSums = function (aNumsArray, target) {
         return EMPTY_RESULT;
     }
 
-    // EARLY EXIT Maximum possible sum is less than the target, making the sum impossible
-    const lastIndex = nums.length - 1;
-    const lastHighValue = nums[lastIndex];
-    const maxPossibleSum = lastHighValue * LEN_TRIPLET;
-    if (maxPossibleSum < target) {
-        log.vBullet(
-            `!!!EARLY EXIT:\n` + 
-            CHAR_INDENT.repeat(log.indent()+1) + `Highest valK, makes for a maximum possible threeSum of ${maxPossibleSum} (valK:${lastHighValue})\n` + 
-            CHAR_INDENT.repeat(log.indent()+1) + `And that is less than the targetSum for triplets (maxSum:${maxPossibleSum} < target:${target})`
-        );
-        return EMPTY_RESULT;
-    }
-
     // filter array removing numbers from nums for volumes of any individual
     // number greater than the size of the unique set we're trying to produce
     // e.g. in "threeSum([i,j,k,l])" where i=j=k=l
@@ -134,10 +121,7 @@ var threeSums = function (aNumsArray, target) {
     nums = filteredNums;
 
     let idxI = 0;
-    const idxOflastPossibleK = nums.length - 1;
-    let [idxOfnewLastK] = sliceSortedRange(idxOflastPossibleK,idxI,target,nums);
-
-    //TODO SPLIT K BY MIDPT FROM THE END LIKE WE DID IN TWOSUM
+    let idxOflastPossibleK = nums.length - 1;
     const uniqueTrioData = {
         "keysArray": [],
         "valuesArray": [],
@@ -150,40 +134,22 @@ var threeSums = function (aNumsArray, target) {
         }
     };
     while (idxI < nums.length) {
-        let highestVal = nums[idxOflastPossibleK];
-        const firstIdxJ = idxI + 1;
-        const nextLowValue = nums[firstIdxJ];
-        // const lowValueTarget = target - nextLowValue;
         const valI = nums[idxI];
         const targetSumOfJK = target - valI;
-        // TODO figure out if the following code for trying to reduce the end of the upcoming nums.slice()
-        // [idxOfnewLastK] = sliceSortedRange(idxOflastPossibleK,firstIdxJ,targetSumOfJK,nums);
-        
-        // let twoSumEndIdx = idxOflastPossibleK;
-        // if(idxOfnewLastK !== idxOflastPossibleK) {
-        //     const newHighestVal = nums[idxOfnewLastK];
-        //     twoSumEndIdx=idxOfnewLastK;
-        //     highestVal=newHighestVal;
-        //     if(nums[idxOfnewLastK]*2 < targetSumOfJK)
-        //         console.log("!!!WARNING - ");
-        //     log.vBullet(
-        //         `for idxI=${idxI} newMaxIdxK !== oldMaxIdxK (${idxOfnewLastK} !== ${idxOflastPossibleK})\n`+
-        //         `vals{valI: ${valI}, lowValTarget:${targetSumOfJK},oldValMaxK:${highestVal} ,newValMaxK:${newHighestVal},highestSum:${nums[idxOfnewLastK]*2}}`
-        //     );
-        // }
+        const nextLowestValue = nums[idxI + 1];
+        const highestPossibleValue = nums[idxOflastPossibleK];
 
         // EARLY EXIT: return if target is lower than all remaining numbers)
-        if (targetSumOfJK < nextLowValue) {
+        if (targetSumOfJK < nextLowestValue) {
             log.vBullet(
                 `WHILE BREAK:\n` + 
                 CHAR_INDENT.repeat(log.indent()+1) + `Current idxI has no matching duos in the remaining numbers (idxI:${idxI}, valI:${valI})\n` +
-                CHAR_INDENT.repeat(log.indent()+1) + `Next smallest valJ is above new target of Sum(valJ,valK) (valJ:${nextLowValue} > target:${targetSumOfJK}),`
+                CHAR_INDENT.repeat(log.indent()+1) + `Next smallest valJ is above new target of Sum(valJ,valK) (valJ:${nextLowestValue} > target:${targetSumOfJK}),`
             );
             break;
         }
 
-        const numsSliced = nums.slice(firstIdxJ, idxOflastPossibleK + 1);
-        // const numsSliced = nums.slice(firstIdxJ, twoSumEndIdx + 1);
+        const numsSliced = nums.slice(idxI + 1, idxOflastPossibleK + 1);
         // EARLY EXIT: return if array isn't big enough to form a triplet
         if (numsSliced.length < (LEN_TRIPLET - 1)) {
             log.vBullet(
@@ -193,15 +159,9 @@ var threeSums = function (aNumsArray, target) {
             break;
         }
 
-        // EARLY EXIT Maximum possible sum is less than the target, making the sum impossible
-        const maxPossibleSum = highestVal * LEN_TRIPLET;
-        if (maxPossibleSum < target) {
-            log.vBullet(
-                `!!!WHILE BREAK:\n` + 
-                CHAR_INDENT.repeat(log.indent()+1) + `Highest valK, makes for a maximum possible threeSum of ${maxPossibleSum} (valK:${highestVal})\n` + 
-                CHAR_INDENT.repeat(log.indent()+1) + `And that is less than the targetSum for trios (maxSum:${maxPossibleSum} < target:${target})`
-            );
-            break;
+        if (highestPossibleValue*LEN_TRIPLET < target) {
+            log.vBullet(`${highestPossibleValue*LEN_TRIPLET} vs ${targetSumOfJK}`);
+            // throw (`${highestPossibleValue*LEN_TRIPLET} vs ${targetSumOfJK}`);
         }
 
         log.verbose(`New target=${targetSumOfJK} for sum(nums[j,k]) /w i=${idxI}.`);
@@ -209,7 +169,7 @@ var threeSums = function (aNumsArray, target) {
         const twoSumsWrapperFn = () => { return twoSums(numsSliced, targetSumOfJK); };
         const matchingDuos = timeStampWrap("twoSums", twoSumsRuntimeMsg, twoSumsWrapperFn, log.vHeader, log.vFooter);
 
-        log.vBullet(`Value @ first possible j=${nextLowValue} & @ last possible k=${highestVal}`);
+        log.vBullet(`Value @ first possible j=${nextLowestValue} & @ last possible k=${highestPossibleValue}`);
         log.vBullet(
             `Sliced ${nums.length} nums down to ` +
             `${numsSliced.length < MAX_PRINTABLE_NUMS_LEN ? "["+numsSliced+"]" : numsSliced.length + " integers"} ` +
@@ -279,13 +239,13 @@ var twoSums = (aNumsArray, target) => {
         else {
             targetsMissed++;
 
-            // EARLY EXIT Maximum possible sum is less than the target, making the sum impossible
             const maxPossibleSum = valK * LEN_DUO;
+            // EARLY EXIT Maximum possible sum is less than the target, making the sum impossible
             if (maxPossibleSum < target) {
                 log.vBullet(
                     `!!!WHILE BREAK:\n` + 
                     CHAR_INDENT.repeat(log.indent()+1) + `Highest valK, makes for a maximum possible twoSum of ${maxPossibleSum} (valK:${valK})\n` + 
-                    CHAR_INDENT.repeat(log.indent()+1) + `And that is less than the targetSum for duos (maxSum:${maxPossibleSum} < target:${target})`
+                    CHAR_INDENT.repeat(log.indent()+1) + `And that is more than the targetSum for duos (maxSum:${maxPossibleSum} < target:${target})`
                 );
                 break;
             }
@@ -298,9 +258,22 @@ var twoSums = (aNumsArray, target) => {
                 // repeats recursively with midIdx as idxK
                 // return the last possible midIdx-1 where midIdx is not between j & k AND midVal is not too small
                 if (Math.abs(valJOffByTarget) < Math.abs(valKOffByTarget)) {
-                    // let newLastIdx = splitSortedRange(idxK,idxJ,target,nums);
-                    // idxK = newLastIdx;
-                    [idxK] = sliceSortedRange(idxK,idxJ,target,nums);
+                    let nextIdxK = (function fn(highIdx) {
+                        const midIdx = Math.round((highIdx - idxJ) / 2) + idxJ;
+                        const idxMidIsValid = (midIdx > idxJ && midIdx < highIdx);
+                        const sumMidIsTooSmall = (nums[midIdx] + nums[idxJ]) <= target;
+                        // console.log({
+                        //     nums, 
+                        //     idx:{j:idxJ,k:idxK, high:highIdx,mid:midIdx},
+                        //     vals:{j:nums[idxJ],k:nums[idxJ],high:nums[highIdx],mid:nums[midIdx], target},
+                        //     idxMidIsValid, sumMidIsTooSmall
+                        // });
+                        if (sumMidIsTooSmall || !idxMidIsValid) {
+                            return highIdx - 1;
+                        }
+                        return fn(midIdx);
+                    })(idxK);
+                    idxK = nextIdxK;
                 }
                 else {
                     idxK--;
@@ -322,25 +295,6 @@ var twoSums = (aNumsArray, target) => {
     }
     return uniqueDuoIdxs;
 };
-
-function sliceSortedRange(highIdx,lowIdx,target,sortedNumsArray) {
-    const midIdx = Math.round((highIdx - lowIdx) / 2) + lowIdx;
-    const [valHigh,valLow, valMid] = [sortedNumsArray[highIdx],sortedNumsArray[lowIdx],sortedNumsArray[midIdx]]
-    const idxMidIsValid = (midIdx > lowIdx && midIdx < highIdx);
-    const sumMidIsTooSmall = (sortedNumsArray[midIdx] + valLow) <= target;
-    // log.vBullet(`idxs{high:${highIdx},low:${lowIdx}, mid:${midIdx}},\n`+
-    //     CHAR_INDENT.repeat(log.indent()) + `  vals{high:${valHigh},low:${valLow}, mid:${valMid}},\n`+
-    //     CHAR_INDENT.repeat(log.indent()) + `  sums{target:${target},max:${valHigh*2},max@mid:${valMid*2}},\n` +
-    //     CHAR_INDENT.repeat(log.indent()) + `  flags{tooSmall:${sumMidIsTooSmall},isValid:${idxMidIsValid}\n` +
-    //     CHAR_INDENT.repeat(log.indent()) + `  nums{len:${sortedNumsArray.length},newLen:${sortedNumsArray.slice(0, highIdx).length}}`
-    // );
-
-    if (sumMidIsTooSmall || !idxMidIsValid) {
-        // const slicedNums = sortedNumsArray.slice(0, highIdx);
-        return [highIdx - 1];
-    }
-    return sliceSortedRange(midIdx,lowIdx,target,sortedNumsArray);
-}
 
 function getLogFns() {
     let theLogIndent = 0;
