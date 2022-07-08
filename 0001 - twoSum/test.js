@@ -14,12 +14,13 @@ testCases = testCases.concat(JSON.parse(fs.readFileSync("./testcases/testcases.j
     //     { input: [0], expected:[] }
     // ];
     
-    testCases.some((valTC,idxTC)=>{
+testCases.some((valTC,idxTC)=>{
         
     // const testCaseInput = util.inspect(valTC.input, showHidden = false, depth = null, colorize = true);
     // console.log({idxTC, valTC});
     // var results = twoSumJS.twoSumvalTC.input);
-    var results = twoSumJS.twoSumAll(valTC.input.nums, valTC.input.target);
+    // var results = twoSumJS.twoSumAll(valTC.input.nums, valTC.input.target);
+    var results = twoSumJS.twoSum(valTC.input.nums, valTC.input.target);
     
     const lenExpected = valTC.expected.length;
     console.log({results});
@@ -32,20 +33,21 @@ testCases = testCases.concat(JSON.parse(fs.readFileSync("./testcases/testcases.j
     if (lenExpected !== lenActual) {
         const largestLength = Math.max(lenExpected, lenActual);
         console.log(`Result Length Error: len(expected,actual) do not match -> ${lenExpected} !== ${lenActual}`);
-        // console.log({largestLength});
+        console.log(` EXPECTED !== ACTUAL`);
         for (let index = 0; index < largestLength; index++) {
             const elementExpected = valTC.expected[index];
             const actualExpected = results[index];
             if (elementExpected !== actualExpected) {
-                // console.log(`Error ${elementExpected} !== ${actualExpected}`);
+                console.log(`Error ${elementExpected} !== ${actualExpected}`);
             }
         }
     }
     else {
-        results.some((trio,resultIdx)=>{
-            trio.some((val,trioIdx)=> {
-                if(valTC.expected[resultIdx][trioIdx] !== val) {
-                    console.log(`${valTC.expected[resultIdx][trioIdx]} !== ${val}`);
+        results.some((duo,resultIdx)=>{
+            console.log(`Resulting Duo: ${duo}; Expected Duo: ${valTC.expected[resultIdx]}`);
+            duo.some((val,duoIdx)=> {
+                if(valTC.expected[resultIdx][duoIdx] !== val) {
+                    console.log(`${valTC.expected[resultIdx][duoIdx]} !== ${val}`);
                 }
             })
         })
