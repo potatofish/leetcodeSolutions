@@ -1,9 +1,9 @@
-let threeSumJS = require('./threeSum.js');
+let twoSumJS = require('./twoSum.js');
 let fs = require("fs");
 let util = require("util");
 let testCases = [];
-// testCases = testCases.concat(JSON.parse(fs.readFileSync("./testcases/testcases.json","utf-8"))); // simple cases
-testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-01.json","utf-8")));  // massive case with no reduction
+testCases = testCases.concat(JSON.parse(fs.readFileSync("./testcases/testcases.json","utf-8"))); // simple cases
+// testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-01.json","utf-8")));  // massive case with no reduction
 // testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-02.json","utf-8")));  
 // testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-03.json","utf-8")));  // massive case with many duplicates
 // console.log(util.inspect(testCases, showHidden = false, depth = null, colorize = true));
@@ -18,10 +18,17 @@ testCases.push(JSON.parse(fs.readFileSync("./testcases/bigger cases/big-01.json"
         
     // const testCaseInput = util.inspect(valTC.input, showHidden = false, depth = null, colorize = true);
     // console.log({idxTC, valTC});
-    var results = threeSumJS.threeSum(valTC.input);
+    // var results = twoSumJS.twoSumvalTC.input);
+    var results = twoSumJS.twoSumAll(valTC.input.nums, valTC.input.target);
     
     const lenExpected = valTC.expected.length;
+    console.log({results});
     const lenActual = results.length;
+    if (typeof results === "undefined") {
+        console.log("ERROR - No Results Returned")
+        return false;
+    }
+
     if (lenExpected !== lenActual) {
         const largestLength = Math.max(lenExpected, lenActual);
         console.log(`Result Length Error: len(expected,actual) do not match -> ${lenExpected} !== ${lenActual}`);
