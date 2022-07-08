@@ -95,7 +95,7 @@ const log = getLogFns();
                 //TODO find out how many times the next biggest nuimber is way off - and if we should split for a new idxJ
                 // if the sum is too small try the next biggest number
                 if (sumJK < theTarget) { 
-                    idxJ = getNextIndex(idxJ, idxK,"fforward",theTarget);
+                    idxJ = getNextIndex(idxJ+1, idxK,"fforward",theTarget);
                     // idxJ++
                     return;
                 } 
@@ -111,22 +111,41 @@ const log = getLogFns();
                 // repeating recursively with midIdx as idxK or idxJ ending when either
                 //  -there are no more midways points (returns idxLow to push idxJ lower than idxK & end the loop)
                 // - there is a 
-                function getNextIndex(idxLow,idxHigh,mode, targetNumber,sortedArray) {
+                function getNextIndex(idxLow,idxHigh,mode, targetNumber) {
+                    log.vBullet(`Initial idx[low,high] = [${idxLow},${idxHigh}], vals[l,h]=[${localNums[idxLow]},${localNums[idxHigh]}]`)
                     var valAtMid = (valLow,valMid,valHigh)=>{
                         return valMid;
                     }; 
+
+                    // return early will null if there is no mid for initial values
+                    if(idxHigh-1 === idxLow) {
+                        const [valLow, valHigh] = [idxLow,idxHigh].map((idx)=>{return localNums[idx]});
+                        if(valLow + valHigh != theTarget)
+                            return null;
+                        if(mode === "rewind")
+                            return idxHigh;
+                        if(mode === "fforward") 
+                            return idxLow;
+                    }
+
                     
-                    return getNextIndexRec(idxLow,idxHigh,mode,sortedArray)
+                    return getNextIndexRec(idxLow,idxHigh,mode)
                     
                     function getNextIndexRec(r_idxLow,r_idxHigh,r_mode) {
                         var sumAtMid = (valLow,valMid,valHigh)=>{
                             return valMid + (r_mode === "rewind" ? valLow : valHigh);
                         };
-                        const r_idxMid = Math.round((r_idxHigh - r_idxLow) / 2) + r_idxLow;
+                        let r_idxMid = Math.round((r_idxHigh - r_idxLow) / 2) + r_idxLow;
+                        //TODO adjust r_idxMid to rewind to first instance of value
+                        let idxOfFirstMidValue = r_idxMid;
+                        while(localNums[idxOfFirstMidValue] === localNums[idxOfFirstMidValue -1]) {idxOfFirstMidValue--;} // this doesn't work like expected
+                        let isIdxMidFirstIdxOfValue = (localNums[r_idxMid] === localNums[idxOfFirstMidValue]);
+                        
+                        
                         const [valLow, valMid, valHigh] = [r_idxLow,r_idxMid,r_idxHigh].map((idx)=>{return localNums[idx]});
                         const idxMidIsValid = (r_idxLow < r_idxMid && r_idxMid < r_idxHigh);
-                        const getValueToCompare = ((mode === "find") ? valAtMid : sumAtMid);
-                        // console.log({getValueToCompare});
+                        const getValueToCompare = sumAtMid; /// find is not implemented as I don't have good test cases yet
+                        // const getValueToCompare = ((mode === "find") ? valAtMid : sumAtMid); /// find is not implemented as I don't have good test cases yet
                         const resultToCompare = getValueToCompare(valLow, valMid, valHigh);
                         log.vBullet(`idxs{high:${r_idxHigh},low:${r_idxLow}, mid:${r_idxMid}},\n`+
                             CHAR_INDENT.repeat(log.indent()) + `  vals{high:${valHigh},low:${valLow}, mid:${valMid}},\n`+
@@ -135,11 +154,20 @@ const log = getLogFns();
                             CHAR_INDENT.repeat(log.indent()) + `  nums{len:${localNums.length},newLen:${localNums.slice(0, idxHigh).length}}`
                         );
                         
-                        if(!idxMidIsValid) { return null; }
-                        if(resultToCompare === targetNumber) { return r_idxMid; }
+                        if(!idxMidIsValid) { 
+                            if(r_idxLow >= r_idxHigh)
+                                return null; 
+                            if(mode === "rewind")
+                                return r_idxHigh;
+                            if(mode === "fforward")
+                                return r_idxLow;
+                        }
+                        if(resultToCompare === targetNumber) { 
+                            return r_idxMid; 
+                        }
                         
                         if(resultToCompare < targetNumber) {
-                            let newIdx = getNextIndexRec(r_idxMid, idxHigh,"fforward");
+                            let newIdx = getNextIndexRec(idxOfFirstMidValue, idxHigh,"fforward");
                             return newIdx; 
                         }
                         
@@ -270,7 +298,9 @@ var twoSumV2 = function(nums, target) {
 var twoSum= (nums,target) => {
     const collection = new DuoCollection(nums, target,1);
     // console.log({vals:collection.values(),idxs:collection.indices()});
-    return collection.indices(1);
+    const result = collection.indices(1)[0];
+    console.log(result);
+    return result;
 }
 
 var twoSumAll = (nums, target) => {

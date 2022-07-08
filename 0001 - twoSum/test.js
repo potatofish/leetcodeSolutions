@@ -22,14 +22,14 @@ testCases.some((valTC,idxTC)=>{
     // var results = twoSumJS.twoSumAll(valTC.input.nums, valTC.input.target);
     var results = twoSumJS.twoSum(valTC.input.nums, valTC.input.target);
     
-    const lenExpected = valTC.expected.length;
-    console.log({results});
-    const lenActual = results.length;
+    // console.log({results});
     if (typeof results === "undefined") {
         console.log("ERROR - No Results Returned")
         return false;
     }
-
+    
+    const lenExpected = valTC.expected.length;
+    const lenActual = results.length;
     if (lenExpected !== lenActual) {
         const largestLength = Math.max(lenExpected, lenActual);
         console.log(`Result Length Error: len(expected,actual) do not match -> ${lenExpected} !== ${lenActual}`);
@@ -43,13 +43,12 @@ testCases.some((valTC,idxTC)=>{
         }
     }
     else {
-        results.some((duo,resultIdx)=>{
-            console.log(`Resulting Duo: ${duo}; Expected Duo: ${valTC.expected[resultIdx]}`);
-            duo.some((val,duoIdx)=> {
-                if(valTC.expected[resultIdx][duoIdx] !== val) {
-                    console.log(`${valTC.expected[resultIdx][duoIdx]} !== ${val}`);
-                }
-            })
+        let duo = results;
+        console.log(`Resulting Duo: ${duo}; Expected Duo: ${valTC.expected}`);
+        duo.some((val,duoIdx)=> {
+            if(valTC.expected[duoIdx] !== val) {
+                console.log(`${valTC.expected[duoIdx]} !== ${val}`);
+            }
         })
     }
 })
